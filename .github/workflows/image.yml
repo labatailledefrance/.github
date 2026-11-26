@@ -1,6 +1,6 @@
 # Construit une image sur une base dhi.io, la publie sur ghcr.io avec SBOM et
 # provenance, la scanne, puis la signe (cosign sans clé). La signature vaut
-# approbation : le cluster refuse une image non signée (Kyverno, beta1-helm).
+# approbation : on la vérifie au déploiement (cosign verify, voir beta1-helm).
 # À n'appeler que sur push (main, tags) : les PR de forks n'ont pas les secrets.
 name: image
 
