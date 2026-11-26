@@ -18,3 +18,12 @@ jobs:
     uses: $/.github/workflows/dco.yml
     permissions:
       contents: read
+
+  codeql:
+    uses: $/.github/workflows/codeql.yml
+    with:
+      langages: '["actions"]'
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
