@@ -27,6 +27,8 @@ jobs:
           echec=0
           for c in $(git rev-list --no-merges "$BASE..$HEAD"); do
             auteur=$(git log -1 --format='%an <%ae>' "$c")
+            # Dependabot : commits signés et vérifiés par GitHub, sans DCO.
+            case "$auteur" in "dependabot[bot] <"*"@users.noreply.github.com>") continue ;; esac
             if ! git log -1 --format='%(trailers:key=Signed-off-by,valueonly)' "$c" | grep -qxF "$auteur"; then
               echo "::error::commit $c : pas de « Signed-off-by: $auteur » (git commit -s)"
               echec=1
