@@ -10,7 +10,7 @@ Dans le code, les **termes techniques restent en anglais** : `handshake`, `encod
 
 ## Licence et DCO
 
-Le code est sous **AGPL-3.0-or-later**. En contribuant, vous certifiez le [Developer Certificate of Origin](https://developercertificate.org/) : vous avez le droit de soumettre ce code sous cette licence. Chaque commit porte la ligne :
+Le code est sous **AGPL-3.0-or-later**, la documentation (dépôt `documentation`) sous **CC-BY-SA-4.0**. En contribuant, vous certifiez le [Developer Certificate of Origin](https://developercertificate.org/) : vous avez le droit de soumettre votre contribution sous la licence du dépôt. Chaque commit porte la ligne :
 
 ```
 Signed-off-by: Prénom Nom <adresse@exemple.fr>
