@@ -1,0 +1,20 @@
+# CI de ce dépôt : il n'a que des workflows, on les passe à zizmor.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  securite:
+    uses: $/.github/workflows/securite.yml
+    permissions:
+      contents: read
+
+  dco:
+    uses: $/.github/workflows/dco.yml
+    permissions:
+      contents: read

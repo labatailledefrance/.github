@@ -1,0 +1,86 @@
+# Contrôles Rust communs : format, lints, tests, licences et vulnérabilités des
+# dépendances. Appelé par la CI de chaque dépôt Rust (épinglé par SHA).
+name: rust
+
+on:
+  workflow_call:
+    inputs:
+      wasm:
+        description: Construire aussi la cible wasm32-unknown-unknown et passer wasm-bindgen.
+        type: boolean
+        default: false
+      wasm-paquet:
+        description: Paquet cargo qui produit le .wasm (si wasm est vrai).
+        type: string
+        default: ""
+      determinisme:
+        description: Commande du test de déterminisme (vide = pas de test).
+        type: string
+        default: ""
+
+permissions: {}
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+  RUSTFLAGS: -D warnings
+
+jobs:
+  verifier:
+    name: format, lints, tests, dépendances
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Chaîne Rust (rust-toolchain.toml)
+        run: rustup toolchain install && rustup show active-toolchain
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
+        with:
+          tool: cargo-nextest@0.9.151,cargo-deny@0.20.2
+      - name: unsafe interdit au niveau du dépôt
+        run: grep -Eq '^unsafe_code *= *"forbid"' Cargo.toml || { echo "::error::Cargo.toml doit contenir unsafe_code = \"forbid\" dans [workspace.lints.rust] ou [lints.rust]"; exit 1; }
+      - name: Format
+        run: cargo fmt --all --check
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: Tests
+        run: cargo nextest run --workspace --locked --no-tests=pass
+      - name: Licences, vulnérabilités, sources (cargo deny)
+        run: cargo deny --locked check
+      - name: Déterminisme
+        if: inputs.determinisme != ''
+        env:
+          COMMANDE: ${{ inputs.determinisme }}
+        run: bash -euo pipefail -c "$COMMANDE"
+
+  wasm:
+    name: cible wasm32
+    if: inputs.wasm
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Chaîne Rust (rust-toolchain.toml)
+        run: rustup toolchain install && rustup target add wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - name: Version de wasm-bindgen du Cargo.lock
+        id: wb
+        run: echo "version=$(cargo metadata --format-version 1 --locked | jq -r '.packages[] | select(.name == "wasm-bindgen") | .version')" >> "$GITHUB_OUTPUT"
+      - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
+        with:
+          tool: wasm-bindgen@${{ steps.wb.outputs.version }}
+      - name: Construction
+        env:
+          PAQUET: ${{ inputs.wasm-paquet }}
+        run: |
+          cargo build --locked --release --target wasm32-unknown-unknown -p "$PAQUET"
+          wasm-bindgen --target web --no-typescript --out-dir dist \
+            "target/wasm32-unknown-unknown/release/${PAQUET//-/_}.wasm"
+          ls -l dist

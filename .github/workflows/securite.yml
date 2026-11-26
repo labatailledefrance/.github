@@ -1,0 +1,80 @@
+# Analyses de sécurité communes : workflows (zizmor), secrets (gitleaks), SAST
+# (Semgrep CE), Dockerfiles (hadolint), configuration et IaC (trivy config).
+name: sécurité
+
+on:
+  workflow_call: {}
+
+permissions: {}
+
+jobs:
+  workflows:
+    name: workflows (zizmor)
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
+        with:
+          tool: zizmor@1.32.0
+      - name: zizmor
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: zizmor --format=github .github/workflows
+
+  secrets:
+    name: secrets (gitleaks)
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: gitleaks (tout l'historique)
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/depot:ro" \
+            zricethezav/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f \
+            git /depot --redact --no-banner --exit-code 1
+
+  sast:
+    name: SAST (Semgrep CE)
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: semgrep
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD:/src:ro" -w /src \
+            semgrep/semgrep@sha256:31e9989dbc5e2019ea2f793196480e0b2e43f881984f324d2452254a167684e8 \
+            semgrep scan --metrics=off --error --severity=ERROR \
+              --config=p/rust --config=p/secrets --config=p/dockerfile --config=p/kubernetes --config=p/github-actions
+
+  iac:
+    name: Dockerfiles et configuration (hadolint, trivy)
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: hadolint
+        run: |
+          find . -path ./target -prune -o \( -name Dockerfile -o -name '*.Dockerfile' \) -print | while read -r f; do
+            echo "== $f"
+            docker run --rm -i hadolint/hadolint@sha256:9a3944b7fddcb947d1ffd90829ac1a6e5c30479223358f249d8b96c7d0019e27 \
+              hadolint --failure-threshold warning - < "$f"
+          done
+      - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
+        with:
+          tool: trivy@0.76.2
+      - name: trivy config
+        run: trivy config --exit-code 1 --severity HIGH,CRITICAL --skip-dirs target .

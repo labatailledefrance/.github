@@ -1,0 +1,9 @@
+name: Proposition
+description: Une fonctionnalité ou une amélioration.
+labels: [proposition]
+body:
+  - type: textarea
+    attributes: { label: Le besoin, description: Ce que le joueur ou le contributeur ne peut pas faire aujourd'hui. }
+    validations: { required: true }
+  - type: textarea
+    attributes: { label: Piste }

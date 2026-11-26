@@ -1,0 +1,35 @@
+# Vérifie que chaque commit d'une PR porte un Signed-off-by de son auteur (DCO).
+name: dco
+
+on:
+  workflow_call: {}
+
+permissions: {}
+
+jobs:
+  dco:
+    name: Signed-off-by
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Signed-off-by de l'auteur sur chaque commit
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          echec=0
+          for c in $(git rev-list --no-merges "$BASE..$HEAD"); do
+            auteur=$(git log -1 --format='%an <%ae>' "$c")
+            if ! git log -1 --format='%(trailers:key=Signed-off-by,valueonly)' "$c" | grep -qxF "$auteur"; then
+              echo "::error::commit $c : pas de « Signed-off-by: $auteur » (git commit -s)"
+              echec=1
+            fi
+          done
+          exit "$echec"

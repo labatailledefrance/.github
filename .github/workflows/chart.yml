@@ -1,0 +1,79 @@
+# Vérifie les charts Helm d'un dossier ; sur main et les tags, les publie en OCI
+# sur ghcr.io et les signe (cosign sans clé).
+name: chart
+
+on:
+  workflow_call:
+    inputs:
+      dossier:
+        description: Dossier qui contient un sous-dossier par chart.
+        type: string
+        default: charts
+      publier:
+        description: Publier et signer (à réserver aux push sur main et aux tags).
+        type: boolean
+        default: false
+
+permissions: {}
+
+jobs:
+  chart:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    env:
+      DOSSIER: ${{ inputs.dossier }}
+      DEPOT_OCI: ghcr.io/${{ github.repository_owner }}/charts
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e # v5.1.0
+        with:
+          version: v4.3.1
+      - name: helm lint et rendu
+        run: |
+          mkdir -p rendu
+          for c in "$DOSSIER"/*/; do
+            n=$(basename "$c")
+            helm lint --strict "$c"
+            helm template "$n" "$c" > "rendu/$n.yaml"
+          done
+      - name: kubeconform
+        run: |
+          docker run --rm -v "$PWD/rendu:/rendu:ro" \
+            ghcr.io/yannh/kubeconform@sha256:faffaf43f95aa6425306e1ab8d6fcad72acb9049158f38e574c085ea1ec0f64e \
+            -strict -summary -ignore-missing-schemas /rendu
+      - name: kube-linter
+        run: |
+          docker run --rm -v "$PWD/rendu:/rendu:ro" \
+            stackrox/kube-linter@sha256:f2bfce7879206d32f69ab6572c376f916643f54ca291ac38cf7d01ef591ff3f9 \
+            lint /rendu
+      - name: Connexion à ghcr.io
+        if: inputs.publier
+        env:
+          JETON: ${{ github.token }}
+          ACTEUR: ${{ github.actor }}
+        run: echo "$JETON" | helm registry login ghcr.io --username "$ACTEUR" --password-stdin
+      - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
+        if: inputs.publier
+        with:
+          tool: cosign@3.1.4
+      - name: Publication et signature
+        if: inputs.publier
+        env:
+          JETON: ${{ github.token }}
+          ACTEUR: ${{ github.actor }}
+        run: |
+          echo "$JETON" | cosign login ghcr.io --username "$ACTEUR" --password-stdin
+          mkdir -p paquets
+          for c in "$DOSSIER"/*/; do helm package "$c" -d paquets; done
+          for p in paquets/*.tgz; do
+            sortie=$(helm push "$p" "oci://$DEPOT_OCI" 2>&1); echo "$sortie"
+            ref=$(echo "$sortie" | awk '/^Pushed:/{print $2}')
+            digest=$(echo "$sortie" | awk '/^Digest:/{print $2}')
+            cosign sign --yes "${ref%:*}@$digest"
+          done

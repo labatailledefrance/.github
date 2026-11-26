@@ -1,0 +1,12 @@
+name: Anomalie
+description: Un comportement du jeu ou d'un outil qui ne correspond pas à ce qui est attendu.
+labels: [anomalie]
+body:
+  - type: textarea
+    attributes: { label: Ce qui se passe, description: Avec les étapes pour reproduire. }
+    validations: { required: true }
+  - type: textarea
+    attributes: { label: Ce qui était attendu }
+    validations: { required: true }
+  - type: input
+    attributes: { label: Version, description: Commit, tag ou version affichée par le client. }

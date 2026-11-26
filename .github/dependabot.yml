@@ -1,0 +1,7 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+    # Pas de version publiée depuis moins de deux semaines.
+    cooldown: { default-days: 14 }
