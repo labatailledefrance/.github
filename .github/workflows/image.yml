@@ -7,14 +7,14 @@ name: image
 on:
   workflow_call:
     inputs:
-      nom:
-        description: Nom de l'image (ghcr.io/labatailledefrance/<nom>).
+      name:
+        description: Nom de l'image (ghcr.io/labatailledefrance/<name>).
         type: string
         required: true
       dockerfile:
         type: string
         default: Dockerfile
-      contexte:
+      context:
         type: string
         default: .
     secrets:
@@ -40,7 +40,7 @@ jobs:
     outputs:
       digest: ${{ steps.construire.outputs.digest }}
     env:
-      IMAGE: ghcr.io/${{ github.repository_owner }}/${{ inputs.nom }}
+      IMAGE: ghcr.io/${{ github.repository_owner }}/${{ inputs.name }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -69,7 +69,7 @@ jobs:
       - id: construire
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
-          context: ${{ inputs.contexte }}
+          context: ${{ inputs.context }}
           file: ${{ inputs.dockerfile }}
           push: true
           sbom: true

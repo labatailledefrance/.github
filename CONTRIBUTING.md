@@ -4,7 +4,9 @@ Merci de votre intérêt. Ce guide vaut pour tous les dépôts de l'organisation
 
 ## Langue
 
-Le projet est français : issues, PR, documentation et commentaires du code en **français**. Les identifiants du code peuvent être en français ou en anglais, selon le dépôt.
+Le projet est français : issues, PR, documentation et commentaires du code en **français**.
+
+Dans le code, les **termes techniques restent en anglais** : `handshake`, `encode`, `Reader`, `hash`, `broadcast`, `queue`, `--listen`… Les traduire les rend méconnaissables et les éloigne de la documentation des bibliothèques. Le vocabulaire du jeu (tile, zombie, unité, ravitaillement, commune) et les textes affichés au joueur sont en français.
 
 ## Licence et DCO
 

@@ -22,7 +22,7 @@ jobs:
   codeql:
     uses: $/.github/workflows/codeql.yml
     with:
-      langages: '["actions"]'
+      languages: '["actions"]'
     permissions:
       contents: read
       actions: read

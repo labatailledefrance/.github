@@ -9,11 +9,11 @@ on:
         description: Construire aussi la cible wasm32-unknown-unknown et passer wasm-bindgen.
         type: boolean
         default: false
-      wasm-paquet:
+      wasm-package:
         description: Paquet cargo qui produit le .wasm (si wasm est vrai).
         type: string
         default: ""
-      determinisme:
+      determinism:
         description: Commande du test de déterminisme (vide = pas de test).
         type: string
         default: ""
@@ -52,10 +52,10 @@ jobs:
       - name: Licences, vulnérabilités, sources (cargo deny)
         run: cargo deny --locked check
       - name: Déterminisme
-        if: inputs.determinisme != ''
+        if: inputs.determinism != ''
         env:
-          COMMANDE: ${{ inputs.determinisme }}
-        run: bash -euo pipefail -c "$COMMANDE"
+          COMMAND: ${{ inputs.determinism }}
+        run: bash -euo pipefail -c "$COMMAND"
 
   wasm:
     name: cible wasm32
@@ -80,9 +80,9 @@ jobs:
         run: cargo clippy --locked --target wasm32-unknown-unknown -- -D warnings
       - name: Construction
         env:
-          PAQUET: ${{ inputs.wasm-paquet }}
+          PACKAGE: ${{ inputs.wasm-package }}
         run: |
-          cargo build --locked --release --target wasm32-unknown-unknown -p "$PAQUET"
+          cargo build --locked --release --target wasm32-unknown-unknown -p "$PACKAGE"
           wasm-bindgen --target web --no-typescript --remove-name-section --out-dir dist \
-            "target/wasm32-unknown-unknown/release/${PAQUET//-/_}.wasm"
+            "target/wasm32-unknown-unknown/release/${PACKAGE//-/_}.wasm"
           ls -l dist
